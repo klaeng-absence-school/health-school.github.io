@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบบันทึกข้อมูลงานอนามัยโรงเรียนแกลง"วิทยสถาวร"</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        * {
+            font-family: 'Prompt', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+            backdrop-filter: blur(4px);
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .header-gradient {
+            background: linear-gradient(135deg, #43cea2 0%, #185a9d 100%);
+        }
+        
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loader {
+            width: 120px;
+            height: 120px;
+            position: relative;
+        }
+        
+        .loader-face {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: #fff;
+            position: relative;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        
+        .loader-eye {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #333;
+            border-radius: 50%;
+            top: 40px;
+            animation: blink 2.5s infinite;
+        }
+        
+        .loader-eye.left {
+            left: 30px;
+        }
+        
+        .loader-eye.right {
+            right: 30px;
+        }
+        
+        .loader-mouth {
+            position: absolute;
+            width: 40px;
+            height: 10px;
+            background: #333;
+            border-radius: 0 0 20px 20px;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: smile 1.5s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes blink {
+            0%, 45%, 55%, 100% { height: 20px; }
+            50% { height: 2px; }
+        }
+        
+        @keyframes smile {
+            0% { width: 40px; height: 10px; border-radius: 0 0 20px 20px; }
+            100% { width: 50px; height: 15px; border-radius: 0 0 25px 25px; }
+        }
+        
+        .record-row {
+            transition: all 0.3s ease;
+        }
+        
+        .record-row:hover {
+            background-color: rgba(147, 197, 253, 0.3);
+            cursor: pointer;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .error-message {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            display: none;
+        }
+
+        .success-message {
+            background: #efe;
+            border: 1px solid #cfc;
+            color: #3c3;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+            display: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div class="container mx-auto">
+        <!-- Header -->
+        <div class="header-gradient text-white p-6 rounded-xl mb-6 shadow-lg">
+            <h1 class="text-3xl md:text-4xl font-bold text-center">ระบบบันทึกข้อมูลงานอนามัย</h1>
+            <h2 class="text-xl md:text-2xl font-medium text-center">โรงเรียนแกลง"วิทยสถาวร"</h2>
+        </div>
+
+        <!-- Error/Success Messages -->
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Form Section -->
+            <div class="lg:col-span-2">
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-800">บันทึกข้อมูลการรักษา</h2>
+                    <form id="healthForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">เพศ</label>
+                                <div class="flex space-x-4">
+                                    <label class="flex items-center">
+                                        <input type="radio" name="gender" value="ชาย" class="mr-2" required>
+                                        <span>ชาย</span>
+                                    </label>
+                                    <label class="flex items-center">
+                                        <input type="radio" name="gender" value="หญิง" class="mr-2">
+                                        <span>หญิง</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">ชื่อ - สกุล นักเรียน</label>
+                                <input type="text" name="name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">ชั้น</label>
+                            <select name="class" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                <option value="" disabled selected>เลือกชั้นเรียน</option>
+                                <option value="ผู้บริหาร">ผู้บริหาร</option>
+                                <option value="ครู - บุคลากร">ครู - บุคลากร</option>
+                                <option value="นักการ แม่บ้าน">นักการ แม่บ้าน</option>
+                                <optgroup label="มัธยมศึกษาปีที่ 1">
+                                    <option value="ม.1/1">ม.1/1</option>
+                                    <option value="ม.1/2">ม.1/2</option>
+                                    <option value="ม.1/3">ม.1/3</option>
+                                    <option value="ม.1/4">ม.1/4</option>
+                                    <option value="ม.1/5">ม.1/5</option>
+                                    <option value="ม.1/6">ม.1/6</option>
+                                    <option value="ม.1/7">ม.1/7</option>
+                                    <option value="ม.1/8">ม.1/8</option>
+                                    <option value="ม.1/9">ม.1/9</option>
+                                    <option value="ม.1/10">ม.1/10</option>
+                                    <option value="ม.1/11">ม.1/11</option>
+                                    <option value="ม.1/12">ม.1/12</option>
+                                    <option value="ม.1/13">ม.1/13</option>
+                                    <option value="ม.1/14">ม.1/14</option>
+                                </optgroup>
+                                <optgroup label="มัธยมศึกษาปีที่ 2">
+                                    <option value="ม.2/1">ม.2/1</option>
+                                    <option value="ม.2/2">ม.2/2</option>
+                                    <option value="ม.2/3">ม.2/3</option>
+                                    <option value="ม.2/4">ม.2/4</option>
+                                    <option value="ม.2/5">ม.2/5</option>
+                                    <option value="ม.2/6">ม.2/6</option>
+                                    <option value="ม.2/7">ม.2/7</option>
+                                    <option value="ม.2/8">ม.2/8</option>
+                                    <option value="ม.2/9">ม.2/9</option>
+                                    <option value="ม.2/10">ม.2/10</option>
+                                    <option value="ม.2/11">ม.2/11</option>
+                                    <option value="ม.2/12">ม.2/12</option>
+                                    <option value="ม.2/13">ม.2/13</option>
+                                    <option value="ม.2/14">ม.2/14</option>
+                                </optgroup>
+                                <optgroup label="มัธยมศึกษาปีที่ 3">
+                                    <option value="ม.3/1">ม.3/1</option>
+                                    <option value="ม.3/2">ม.3/2</option>
+                                    <option value="ม.3/3">ม.3/3</option>
+                                    <option value="ม.3/4">ม.3/4</option>
+                                    <option value="ม.3/5">ม.3/5</option>
+                                    <option value="ม.3/6">ม.3/6</option>
+                                    <option value="ม.3/7">ม.3/7</option>
+                                    <option value="ม.3/8">ม.3/8</option>
+                                    <option value="ม.3/9">ม.3/9</option>
+                                    <option value="ม.3/10">ม.3/10</option>
+                                    <option value="ม.3/11">ม.3/11</option>
+                                    <option value="ม.3/12">ม.3/12</option>
+                                    <option value="ม.3/13">ม.3/13</option>
+                                    <option value="ม.3/14">ม.3/14</option>
+                                </optgroup>
+                                <optgroup label="มัธยมศึกษาปีที่ 4">
+                                    <option value="ม.4/1">ม.4/1</option>
+                                    <option value="ม.4/2">ม.4/2</option>
+                                    <option value="ม.4/3">ม.4/3</option>
+                                    <option value="ม.4/4">ม.4/4</option>
+                                    <option value="ม.4/5">ม.4/5</option>
+                                    <option value="ม.4/6">ม.4/6</option>
+                                    <option value="ม.4/7">ม.4/7</option>
+                                    <option value="ม.4/8">ม.4/8</option>
+                                    <option value="ม.4/9">ม.4/9</option>
+                                    <option value="ม.4/10">ม.4/10</option>
+                                    <option value="ม.4/11">ม.4/11</option>
+                                </optgroup>
+                                <optgroup label="มัธยมศึกษาปีที่ 5">
+                                    <option value="ม.5/1">ม.5/1</option>
+                                    <option value="ม.5/2">ม.5/2</option>
+                                    <option value="ม.5/3">ม.5/3</option>
+                                    <option value="ม.5/4">ม.5/4</option>
+                                    <option value="ม.5/5">ม.5/5</option>
+                                    <option value="ม.5/6">ม.5/6</option>
+                                    <option value="ม.5/7">ม.5/7</option>
+                                    <option value="ม.5/8">ม.5/8</option>
+                                    <option value="ม.5/9">ม.5/9</option>
+                                    <option value="ม.5/10">ม.5/10</option>
+                                    <option value="ม.5/11">ม.5/11</option>
+                                </optgroup>
+                                <optgroup label="มัธยมศึกษาปีที่ 6">
+                                    <option value="ม.6/1">ม.6/1</option>
+                                    <option value="ม.6/2">ม.6/2</option>
+                                    <option value="ม.6/3">ม.6/3</option>
+                                    <option value="ม.6/4">ม.6/4</option>
+                                    <option value="ม.6/5">ม.6/5</option>
+                                    <option value="ม.6/6">ม.6/6</option>
+                                    <option value="ม.6/7">ม.6/7</option>
+                                    <option value="ม.6/8">ม.6/8</option>
+                                    <option value="ม.6/9">ม.6/9</option>
+                                    <option value="ม.6/10">ม.6/10</option>
+                                    <option value="ม.6/11">ม.6/11</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">อาการของนักเรียน</label>
+                            <select name="symptoms" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                <option value="" disabled selected>เลือกอาการ</option>
+                                <option value="มีไข้ - ปวดศีรษะ">มีไข้ - ปวดศีรษะ</option>
+                                <option value="เป็นหวัด - มีน้ำมูก">เป็นหวัด - มีน้ำมูก</option>
+                                <option value="ไอ - เจ็บคอ">ไอ - เจ็บคอ</option>
+                                <option value="ท้องเสีย">ท้องเสีย</option>
+                                <option value="แน่นท้อง - จุกเสียด">แน่นท้อง - จุกเสียด</option>
+                                <option value="โรคกระเพาะ">โรคกระเพาะ</option>
+                                <option value="ปวดประจำเดือน">ปวดประจำเดือน</option>
+                                <option value="ลมพิษ - แมลงกัดต่อย">ลมพิษ - แมลงกัดต่อย</option>
+                                <option value="หน้ามืด - เป็นลม">หน้ามืด - เป็นลม</option>
+                                <option value="โรคตา">โรคตา</option>
+                                <option value="คลื่นไส้ - อาเจียน">คลื่นไส้ - อาเจียน</option>
+                                <option value="ปวดฟัน">ปวดฟัน</option>
+                                <option value="ปวดกล้ามเนื้อ">ปวดกล้ามเนื้อ</option>
+                                <option value="อุบัติเหตุ - ทำแผล">อุบัติเหตุ - ทำแผล</option>
+                                <option value="ทำแผลเรื้อรัง">ทำแผลเรื้อรัง</option>
+                                <option value="อื่น ๆ">อื่น ๆ</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">การรักษา / ยาที่จ่าย / ลักษณะของแผล</label>
+                            <textarea name="treatment" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3" required></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 font-medium mb-2">หมายเหตุ</label>
+                            <textarea name="notes" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="2"></textarea>
+                        </div>
+                        
+                        <button type="submit" id="submitBtn" class="btn-primary w-full py-3 px-6 text-white font-medium rounded-lg shadow-md hover:shadow-lg">
+                            บันทึกข้อมูล
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Chart Section -->
+            <div class="lg:col-span-1">
+                <div class="card p-6 mb-6">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-800">สถิติอาการของนักเรียน</h2>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="symptomChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-indigo-800">สถิติตามระดับชั้น</h2>
+                    <div class="chart-container" style="position: relative; height:300px;">
+                        <canvas id="classChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Records -->
+        <div class="card p-6 mt-6">
+            <h2 class="text-2xl font-bold mb-4 text-indigo-800">ข้อมูลการบันทึกล่าสุด</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead class="bg-gradient-to-r from-purple-500 to-indigo-600 text-white">
+                        <tr>
+                            <th class="py-3 px-4 text-left">วันที่</th>
+                            <th class="py-3 px-4 text-left">ชื่อ - สกุล</th>
+                            <th class="py-3 px-4 text-left">ชั้น</th>
+                            <th class="py-3 px-4 text-left">อาการ</th>
+                            <th class="py-3 px-4 text-left">การรักษา</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTable">
+                        <tr>
+                            <td colspan="5" class="py-4 px-4 text-center text-gray-500">กำลังโหลดข้อมูล...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Animation -->
+    <div class="loading" id="loadingAnimation">
+        <div class="loader">
+            <div class="loader-face">
+                <div class="loader-eye left"></div>
+                <div class="loader-eye right"></div>
+                <div class="loader-mouth"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-indigo-800">รายละเอียดการรักษา</h2>
+                <button id="closeModal" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            <div id="modalContent" class="space-y-4">
+                <!-- Modal content will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // ⚠️ สำคัญมาก: เปลี่ยน URL นี้เป็น URL ของ Google Apps Script ที่คุณ Deploy
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwyvynI70iB57Jo-RHUvqNWYyK3CF_GlZ5KG7wGdG4ssyc71F-WgMLqRaVjxXClhYY7NA/exec';
+        
+        let healthRecords = [];
+        let symptomChart = null;
+        let classChart = null;
+        
+        const form = document.getElementById('healthForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const recordsTable = document.getElementById('recordsTable');
+        const loadingAnimation = document.getElementById('loadingAnimation');
+        const detailModal = document.getElementById('detailModal');
+        const closeModal = document.getElementById('closeModal');
+        const modalContent = document.getElementById('modalContent');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+        
+        function showError(message) {
+            errorMessage.textContent = '❌ ' + message;
+            errorMessage.style.display = 'block';
+            successMessage.style.display = 'none';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        function showSuccess(message) {
+            successMessage.textContent = '✅ ' + message;
+            successMessage.style.display = 'block';
+            errorMessage.style.display = 'none';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        function initCharts() {
+            const symptomCtx = document.getElementById('symptomChart').getContext('2d');
+            symptomChart = new Chart(symptomCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                            '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
+                            '#FFCA3A', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
+                            '#FFCA3A'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    family: 'Prompt'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            const classCtx = document.getElementById('classChart').getContext('2d');
+            classChart = new Chart(classCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                            '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    family: 'Prompt'
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateCharts() {
+            const symptomCounts = {};
+            healthRecords.forEach(record => {
+                if (record.symptoms) {
+                    symptomCounts[record.symptoms] = (symptomCounts[record.symptoms] || 0) + 1;
+                }
+            });
+            
+            const symptomLabels = Object.keys(symptomCounts);
+            const symptomData = Object.values(symptomCounts);
+            
+            symptomChart.data.labels = symptomLabels;
+            symptomChart.data.datasets[0].data = symptomData;
+            symptomChart.update();
+            
+            const classCounts = {};
+            healthRecords.forEach(record => {
+                if (record.class) {
+                    let classGroup = record.class;
+                    if (classGroup.startsWith('ม.')) {
+                        classGroup = classGroup.substring(0, 3);
+                    }
+                    classCounts[classGroup] = (classCounts[classGroup] || 0) + 1;
+                }
+            });
+            
+            const classLabels = Object.keys(classCounts);
+            const classData = Object.values(classCounts);
+            
+            classChart.data.labels = classLabels;
+            classChart.data.datasets[0].data = classData;
+            classChart.update();
+        }
+        
+        function displayRecords() {
+            recordsTable.innerHTML = '';
+            
+            if (healthRecords.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.innerHTML = `
+                    <td colspan="5" class="py-4 px-4 text-center text-gray-500">ไม่มีข้อมูลการบันทึก</td>
+                `;
+                recordsTable.appendChild(emptyRow);
+                return;
+            }
+            
+            const sortedRecords = [...healthRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+            const recentRecords = sortedRecords.slice(0, 10);
+            
+            recentRecords.forEach((record) => {
+                const row = document.createElement('tr');
+                row.className = 'record-row border-b hover:bg-blue-50';
+                
+                const date = new Date(record.date);
+                const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'})}`;
+                
+                row.innerHTML = `
+                    <td class="py-3 px-4">${formattedDate}</td>
+                    <td class="py-3 px-4">${record.name || '-'}</td>
+                    <td class="py-3 px-4">${record.class || '-'}</td>
+                    <td class="py-3 px-4">${(record.symptoms && record.symptoms.length > 30) ? record.symptoms.substring(0, 30) + '...' : (record.symptoms || '-')}</td>
+                    <td class="py-3 px-4">${(record.treatment && record.treatment.length > 30) ? record.treatment.substring(0, 30) + '...' : (record.treatment || '-')}</td>
+                `;
+                
+                row.addEventListener('click', () => showRecordDetails(record));
+                recordsTable.appendChild(row);
+            });
+        }
+        
+        function showRecordDetails(record) {
+            const date = new Date(record.date);
+            const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH')}`;
+            
+            modalContent.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-gray-600">วันที่บันทึก</p>
+                        <p class="font-medium">${formattedDate}</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-600">เพศ</p>
+                        <p class="font-medium">${record.gender || '-'}</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <p class="text-gray-600">ชื่อ - สกุล</p>
+                    <p class="font-medium">${record.name || '-'}</p>
+                </div>
+                
+                <div>
+                    <p class="text-gray-600">ชั้น</p>
+                    <p class="font-medium">${record.class || '-'}</p>
+                </div>
+                
+                <div>
+                    <p class="text-gray-600">อาการ</p>
+                    <p class="font-medium">${record.symptoms || '-'}</p>
+                </div>
+                
+                <div>
+                    <p class="text-gray-600">การรักษา</p>
+                    <p class="font-medium">${record.treatment || '-'}</p>
+                </div>
+                
+                <div>
+                    <p class="text-gray-600">หมายเหตุ</p>
+                    <p class="font-medium">${record.notes || '-'}</p>
+                </div>
+            `;
+            
+            detailModal.style.display = 'flex';
+        }
+        
+        closeModal.addEventListener('click', () => {
+            detailModal.style.display = 'none';
+        });
+        
+        window.addEventListener('click', (event) => {
+            if (event.target === detailModal) {
+                detailModal.style.display = 'none';
+            }
+        });
+        
+        // Load records from API
+        async function loadRecords() {
+            try {
+                loadingAnimation.style.display = 'flex';
+                
+                const response = await fetch(`${API_URL}?action=getRecords`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    healthRecords = data.records || [];
+                    updateCharts();
+                    displayRecords();
+                } else {
+                    showError('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error loading records:', error);
+                showError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบ URL API');
+            } finally {
+                loadingAnimation.style.display = 'none';
+            }
+        }
+        
+        // Submit form
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'กำลังบันทึก...';
+                loadingAnimation.style.display = 'flex';
+                
+                const formData = new FormData(form);
+                const newRecord = {
+                    date: new Date().toISOString(),
+                    gender: formData.get('gender'),
+                    name: formData.get('name'),
+                    class: formData.get('class'),
+                    symptoms: formData.get('symptoms'),
+                    treatment: formData.get('treatment'),
+                    notes: formData.get('notes')
+                };
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(newRecord)
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    healthRecords.unshift(newRecord);
+                    updateCharts();
+                    displayRecords();
+                    showSuccess('บันทึกข้อมูลเรียบร้อยแล้ว!');
+                    
+                    if (typeof confetti === 'function') {
+                        confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 }
+                        });
+                    }
+                    
+                    form.reset();
+                } else {
+                    showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error saving record:', error);
+                showError('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'บันทึกข้อมูล';
+                loadingAnimation.style.display = 'none';
+            }
+        });
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            loadRecords();
+        });
+    </script>
+</body>
+</html>
