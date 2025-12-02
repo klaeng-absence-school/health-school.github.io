@@ -671,75 +671,76 @@
         }
     }
     
-    // Submit form - ใช้ FormData แทน JSON
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
+    // Submit form - ใช้ GET request แทน POST เพื่อหลีกเลี่ยงปัญหา CORS
+form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'กำลังบันทึก...';
+        loadingAnimation.style.display = 'flex';
         
-        try {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'กำลังบันทึก...';
-            loadingAnimation.style.display = 'flex';
-            
-            const formData = new FormData(form);
-            
-            // สร้าง URL parameters
-            const params = new URLSearchParams();
-            params.append('gender', formData.get('gender'));
-            params.append('name', formData.get('name'));
-            params.append('class', formData.get('class'));
-            params.append('symptoms', formData.get('symptoms'));
-            params.append('treatment', formData.get('treatment'));
-            params.append('notes', formData.get('notes') || '');
-            
-            const response = await fetch(API_URL, {
-                method: 'POST',
-                redirect: 'follow',
-                body: params
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            
-            if (data.status === 'success') {
-                const newRecord = {
-                    date: new Date().toISOString(),
-                    gender: formData.get('gender'),
-                    name: formData.get('name'),
-                    class: formData.get('class'),
-                    symptoms: formData.get('symptoms'),
-                    treatment: formData.get('treatment'),
-                    notes: formData.get('notes') || ''
-                };
-                
-                healthRecords.unshift(newRecord);
-                updateCharts();
-                displayRecords();
-                showSuccess('บันทึกข้อมูลเรียบร้อยแล้ว!');
-                
-                if (typeof confetti === 'function') {
-                    confetti({
-                        particleCount: 100,
-                        spread: 70,
-                        origin: { y: 0.6 }
-                    });
-                }
-                
-                form.reset();
-            } else {
-                showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (data.message || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error('Error saving record:', error);
-            showError('ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง');
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'บันทึกข้อมูล';
-            loadingAnimation.style.display = 'none';
+        const formData = new FormData(form);
+        
+        // สร้าง URL parameters สำหรับ GET request
+        const params = new URLSearchParams();
+        params.append('action', 'saveRecord');
+        params.append('gender', formData.get('gender') || '');
+        params.append('name', formData.get('name') || '');
+        params.append('class', formData.get('class') || '');
+        params.append('symptoms', formData.get('symptoms') || '');
+        params.append('treatment', formData.get('treatment') || '');
+        params.append('notes', formData.get('notes') || '');
+        
+        // ใช้ GET request แทน POST
+        const response = await fetch(`${API_URL}?${params.toString()}`, {
+            method: 'GET',
+            redirect: 'follow'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-    });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const newRecord = {
+                date: new Date().toISOString(),
+                gender: formData.get('gender'),
+                name: formData.get('name'),
+                class: formData.get('class'),
+                symptoms: formData.get('symptoms'),
+                treatment: formData.get('treatment'),
+                notes: formData.get('notes') || ''
+            };
+            
+            healthRecords.unshift(newRecord);
+            updateCharts();
+            displayRecords();
+            showSuccess('บันทึกข้อมูลเรียบร้อยแล้ว!');
+            
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+            
+            form.reset();
+        } else {
+            showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (data.message || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error saving record:', error);
+        showError('ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'บันทึกข้อมูล';
+        loadingAnimation.style.display = 'none';
+    }
+});
     
     // Initialize on page load
     window.addEventListener('DOMContentLoaded', () => {
