@@ -416,262 +416,294 @@
     </div>
     
     <script>
-        // ⚠️ สำคัญมาก: เปลี่ยน URL นี้เป็น URL ของ Google Apps Script ที่คุณ Deploy
-        const API_URL = 'https://script.google.com/macros/s/AKfycbwyvynI70iB57Jo-RHUvqNWYyK3CF_GlZ5KG7wGdG4ssyc71F-WgMLqRaVjxXClhYY7NA/exec';
-        
-        let healthRecords = [];
-        let symptomChart = null;
-        let classChart = null;
-        
-        const form = document.getElementById('healthForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const recordsTable = document.getElementById('recordsTable');
-        const loadingAnimation = document.getElementById('loadingAnimation');
-        const detailModal = document.getElementById('detailModal');
-        const closeModal = document.getElementById('closeModal');
-        const modalContent = document.getElementById('modalContent');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        
-        function showError(message) {
-            errorMessage.textContent = '❌ ' + message;
-            errorMessage.style.display = 'block';
-            successMessage.style.display = 'none';
-            setTimeout(() => {
-                errorMessage.style.display = 'none';
-            }, 5000);
-        }
-        
-        function showSuccess(message) {
-            successMessage.textContent = '✅ ' + message;
-            successMessage.style.display = 'block';
+    // ⚠️ สำคัญมาก: เปลี่ยน URL นี้เป็น URL ของ Google Apps Script ที่คุณ Deploy
+    const API_URL = 'https://script.google.com/macros/s/AKfycbwyvynI70iB57Jo-RHUvqNWYyK3CF_GlZ5KG7wGdG4ssyc71F-WgMLqRaVjxXClhYY7NA/exec';
+    
+    let healthRecords = [];
+    let symptomChart = null;
+    let classChart = null;
+    
+    const form = document.getElementById('healthForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const recordsTable = document.getElementById('recordsTable');
+    const loadingAnimation = document.getElementById('loadingAnimation');
+    const detailModal = document.getElementById('detailModal');
+    const closeModal = document.getElementById('closeModal');
+    const modalContent = document.getElementById('modalContent');
+    const errorMessage = document.getElementById('errorMessage');
+    const successMessage = document.getElementById('successMessage');
+    
+    function showError(message) {
+        errorMessage.textContent = '❌ ' + message;
+        errorMessage.style.display = 'block';
+        successMessage.style.display = 'none';
+        setTimeout(() => {
             errorMessage.style.display = 'none';
-            setTimeout(() => {
-                successMessage.style.display = 'none';
-            }, 5000);
-        }
-        
-        function initCharts() {
-            const symptomCtx = document.getElementById('symptomChart').getContext('2d');
-            symptomChart = new Chart(symptomCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                            '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
-                            '#FFCA3A', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
-                            '#FFCA3A'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: {
-                                    family: 'Prompt'
-                                }
+        }, 8000);
+    }
+    
+    function showSuccess(message) {
+        successMessage.textContent = '✅ ' + message;
+        successMessage.style.display = 'block';
+        errorMessage.style.display = 'none';
+        setTimeout(() => {
+            successMessage.style.display = 'none';
+        }, 5000);
+    }
+    
+    function initCharts() {
+        const symptomCtx = document.getElementById('symptomChart').getContext('2d');
+        symptomChart = new Chart(symptomCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                        '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
+                        '#FFCA3A', '#8AC926', '#1982C4', '#6A4C93', '#FF595E',
+                        '#FFCA3A'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                family: 'Prompt'
                             }
                         }
                     }
                 }
-            });
-            
-            const classCtx = document.getElementById('classChart').getContext('2d');
-            classChart = new Chart(classCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: [],
-                    datasets: [{
-                        data: [],
-                        backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
-                            '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'right',
-                            labels: {
-                                font: {
-                                    family: 'Prompt'
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-        }
-        
-        function updateCharts() {
-            const symptomCounts = {};
-            healthRecords.forEach(record => {
-                if (record.symptoms) {
-                    symptomCounts[record.symptoms] = (symptomCounts[record.symptoms] || 0) + 1;
-                }
-            });
-            
-            const symptomLabels = Object.keys(symptomCounts);
-            const symptomData = Object.values(symptomCounts);
-            
-            symptomChart.data.labels = symptomLabels;
-            symptomChart.data.datasets[0].data = symptomData;
-            symptomChart.update();
-            
-            const classCounts = {};
-            healthRecords.forEach(record => {
-                if (record.class) {
-                    let classGroup = record.class;
-                    if (classGroup.startsWith('ม.')) {
-                        classGroup = classGroup.substring(0, 3);
-                    }
-                    classCounts[classGroup] = (classCounts[classGroup] || 0) + 1;
-                }
-            });
-            
-            const classLabels = Object.keys(classCounts);
-            const classData = Object.values(classCounts);
-            
-            classChart.data.labels = classLabels;
-            classChart.data.datasets[0].data = classData;
-            classChart.update();
-        }
-        
-        function displayRecords() {
-            recordsTable.innerHTML = '';
-            
-            if (healthRecords.length === 0) {
-                const emptyRow = document.createElement('tr');
-                emptyRow.innerHTML = `
-                    <td colspan="5" class="py-4 px-4 text-center text-gray-500">ไม่มีข้อมูลการบันทึก</td>
-                `;
-                recordsTable.appendChild(emptyRow);
-                return;
             }
-            
-            const sortedRecords = [...healthRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
-            const recentRecords = sortedRecords.slice(0, 10);
-            
-            recentRecords.forEach((record) => {
-                const row = document.createElement('tr');
-                row.className = 'record-row border-b hover:bg-blue-50';
-                
-                const date = new Date(record.date);
-                const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'})}`;
-                
-                row.innerHTML = `
-                    <td class="py-3 px-4">${formattedDate}</td>
-                    <td class="py-3 px-4">${record.name || '-'}</td>
-                    <td class="py-3 px-4">${record.class || '-'}</td>
-                    <td class="py-3 px-4">${(record.symptoms && record.symptoms.length > 30) ? record.symptoms.substring(0, 30) + '...' : (record.symptoms || '-')}</td>
-                    <td class="py-3 px-4">${(record.treatment && record.treatment.length > 30) ? record.treatment.substring(0, 30) + '...' : (record.treatment || '-')}</td>
-                `;
-                
-                row.addEventListener('click', () => showRecordDetails(record));
-                recordsTable.appendChild(row);
-            });
+        });
+        
+        const classCtx = document.getElementById('classChart').getContext('2d');
+        classChart = new Chart(classCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                        '#FF9F40', '#8AC926', '#1982C4', '#6A4C93', '#FF595E'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            font: {
+                                family: 'Prompt'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateCharts() {
+        const symptomCounts = {};
+        healthRecords.forEach(record => {
+            if (record.symptoms) {
+                symptomCounts[record.symptoms] = (symptomCounts[record.symptoms] || 0) + 1;
+            }
+        });
+        
+        const symptomLabels = Object.keys(symptomCounts);
+        const symptomData = Object.values(symptomCounts);
+        
+        symptomChart.data.labels = symptomLabels;
+        symptomChart.data.datasets[0].data = symptomData;
+        symptomChart.update();
+        
+        const classCounts = {};
+        healthRecords.forEach(record => {
+            if (record.class) {
+                let classGroup = record.class;
+                if (classGroup.startsWith('ม.')) {
+                    classGroup = classGroup.substring(0, 3);
+                }
+                classCounts[classGroup] = (classCounts[classGroup] || 0) + 1;
+            }
+        });
+        
+        const classLabels = Object.keys(classCounts);
+        const classData = Object.values(classCounts);
+        
+        classChart.data.labels = classLabels;
+        classChart.data.datasets[0].data = classData;
+        classChart.update();
+    }
+    
+    function displayRecords() {
+        recordsTable.innerHTML = '';
+        
+        if (healthRecords.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = `
+                <td colspan="5" class="py-4 px-4 text-center text-gray-500">ไม่มีข้อมูลการบันทึก</td>
+            `;
+            recordsTable.appendChild(emptyRow);
+            return;
         }
         
-        function showRecordDetails(record) {
-            const date = new Date(record.date);
-            const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH')}`;
+        const sortedRecords = [...healthRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const recentRecords = sortedRecords.slice(0, 10);
+        
+        recentRecords.forEach((record) => {
+            const row = document.createElement('tr');
+            row.className = 'record-row border-b hover:bg-blue-50';
             
-            modalContent.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <p class="text-gray-600">วันที่บันทึก</p>
-                        <p class="font-medium">${formattedDate}</p>
-                    </div>
-                    <div>
-                        <p class="text-gray-600">เพศ</p>
-                        <p class="font-medium">${record.gender || '-'}</p>
-                    </div>
-                </div>
-                
-                <div>
-                    <p class="text-gray-600">ชื่อ - สกุล</p>
-                    <p class="font-medium">${record.name || '-'}</p>
-                </div>
-                
-                <div>
-                    <p class="text-gray-600">ชั้น</p>
-                    <p class="font-medium">${record.class || '-'}</p>
-                </div>
-                
-                <div>
-                    <p class="text-gray-600">อาการ</p>
-                    <p class="font-medium">${record.symptoms || '-'}</p>
-                </div>
-                
-                <div>
-                    <p class="text-gray-600">การรักษา</p>
-                    <p class="font-medium">${record.treatment || '-'}</p>
-                </div>
-                
-                <div>
-                    <p class="text-gray-600">หมายเหตุ</p>
-                    <p class="font-medium">${record.notes || '-'}</p>
-                </div>
+            const date = new Date(record.date);
+            const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH', {hour: '2-digit', minute: '2-digit'})}`;
+            
+            row.innerHTML = `
+                <td class="py-3 px-4">${formattedDate}</td>
+                <td class="py-3 px-4">${record.name || '-'}</td>
+                <td class="py-3 px-4">${record.class || '-'}</td>
+                <td class="py-3 px-4">${(record.symptoms && record.symptoms.length > 30) ? record.symptoms.substring(0, 30) + '...' : (record.symptoms || '-')}</td>
+                <td class="py-3 px-4">${(record.treatment && record.treatment.length > 30) ? record.treatment.substring(0, 30) + '...' : (record.treatment || '-')}</td>
             `;
             
-            detailModal.style.display = 'flex';
-        }
-        
-        closeModal.addEventListener('click', () => {
-            detailModal.style.display = 'none';
+            row.addEventListener('click', () => showRecordDetails(record));
+            recordsTable.appendChild(row);
         });
+    }
+    
+    function showRecordDetails(record) {
+        const date = new Date(record.date);
+        const formattedDate = isNaN(date.getTime()) ? 'วันที่ไม่ถูกต้อง' : `${date.toLocaleDateString('th-TH')} ${date.toLocaleTimeString('th-TH')}`;
         
-        window.addEventListener('click', (event) => {
-            if (event.target === detailModal) {
-                detailModal.style.display = 'none';
-            }
-        });
-        
-        // Load records from API
-        async function loadRecords() {
-            try {
-                loadingAnimation.style.display = 'flex';
-                
-                const response = await fetch(`${API_URL}?action=getRecords`);
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    healthRecords = data.records || [];
-                    updateCharts();
-                    displayRecords();
-                } else {
-                    showError('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (data.message || 'Unknown error'));
-                }
-            } catch (error) {
-                console.error('Error loading records:', error);
-                showError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบ URL API');
-            } finally {
-                loadingAnimation.style.display = 'none';
-            }
-        }
-        
-        // Submit form
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
+        modalContent.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-gray-600">วันที่บันทึก</p>
+                    <p class="font-medium">${formattedDate}</p>
+                </div>
+                <div>
+                    <p class="text-gray-600">เพศ</p>
+                    <p class="font-medium">${record.gender || '-'}</p>
+                </div>
+            </div>
             
-            try {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'กำลังบันทึก...';
-                loadingAnimation.style.display = 'flex';
-                
-                const formData = new FormData(form);
+            <div>
+                <p class="text-gray-600">ชื่อ - สกุล</p>
+                <p class="font-medium">${record.name || '-'}</p>
+            </div>
+            
+            <div>
+                <p class="text-gray-600">ชั้น</p>
+                <p class="font-medium">${record.class || '-'}</p>
+            </div>
+            
+            <div>
+                <p class="text-gray-600">อาการ</p>
+                <p class="font-medium">${record.symptoms || '-'}</p>
+            </div>
+            
+            <div>
+                <p class="text-gray-600">การรักษา</p>
+                <p class="font-medium">${record.treatment || '-'}</p>
+            </div>
+            
+            <div>
+                <p class="text-gray-600">หมายเหตุ</p>
+                <p class="font-medium">${record.notes || '-'}</p>
+            </div>
+        `;
+        
+        detailModal.style.display = 'flex';
+    }
+    
+    closeModal.addEventListener('click', () => {
+        detailModal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', (event) => {
+        if (event.target === detailModal) {
+            detailModal.style.display = 'none';
+        }
+    });
+    
+    // Load records from API
+    async function loadRecords() {
+        try {
+            loadingAnimation.style.display = 'flex';
+            
+            const response = await fetch(`${API_URL}?action=getRecords`, {
+                method: 'GET',
+                redirect: 'follow'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
+                healthRecords = data.records || [];
+                updateCharts();
+                displayRecords();
+                console.log('Loaded records:', healthRecords.length);
+            } else {
+                showError('เกิดข้อผิดพลาดในการดึงข้อมูล: ' + (data.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error loading records:', error);
+            showError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ กรุณาตรวจสอบ URL API หรือลองใหม่อีกครั้ง');
+        } finally {
+            loadingAnimation.style.display = 'none';
+        }
+    }
+    
+    // Submit form - ใช้ FormData แทน JSON
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        try {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'กำลังบันทึก...';
+            loadingAnimation.style.display = 'flex';
+            
+            const formData = new FormData(form);
+            
+            // สร้าง URL parameters
+            const params = new URLSearchParams();
+            params.append('gender', formData.get('gender'));
+            params.append('name', formData.get('name'));
+            params.append('class', formData.get('class'));
+            params.append('symptoms', formData.get('symptoms'));
+            params.append('treatment', formData.get('treatment'));
+            params.append('notes', formData.get('notes') || '');
+            
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                redirect: 'follow',
+                body: params
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.status === 'success') {
                 const newRecord = {
                     date: new Date().toISOString(),
                     gender: formData.get('gender'),
@@ -679,52 +711,43 @@
                     class: formData.get('class'),
                     symptoms: formData.get('symptoms'),
                     treatment: formData.get('treatment'),
-                    notes: formData.get('notes')
+                    notes: formData.get('notes') || ''
                 };
                 
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(newRecord)
-                });
+                healthRecords.unshift(newRecord);
+                updateCharts();
+                displayRecords();
+                showSuccess('บันทึกข้อมูลเรียบร้อยแล้ว!');
                 
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    healthRecords.unshift(newRecord);
-                    updateCharts();
-                    displayRecords();
-                    showSuccess('บันทึกข้อมูลเรียบร้อยแล้ว!');
-                    
-                    if (typeof confetti === 'function') {
-                        confetti({
-                            particleCount: 100,
-                            spread: 70,
-                            origin: { y: 0.6 }
-                        });
-                    }
-                    
-                    form.reset();
-                } else {
-                    showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (data.message || 'Unknown error'));
+                if (typeof confetti === 'function') {
+                    confetti({
+                        particleCount: 100,
+                        spread: 70,
+                        origin: { y: 0.6 }
+                    });
                 }
-            } catch (error) {
-                console.error('Error saving record:', error);
-                showError('ไม่สามารถบันทึกข้อมูลได้ กรุณาลองใหม่อีกครั้ง');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'บันทึกข้อมูล';
-                loadingAnimation.style.display = 'none';
+                
+                form.reset();
+            } else {
+                showError('เกิดข้อผิดพลาดในการบันทึกข้อมูล: ' + (data.message || 'Unknown error'));
             }
-        });
-        
-        // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            initCharts();
-            loadRecords();
-        });
-    </script>
+        } catch (error) {
+            console.error('Error saving record:', error);
+            showError('ไม่สามารถบันทึกข้อมูลได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตและลองใหม่อีกครั้ง');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'บันทึกข้อมูล';
+            loadingAnimation.style.display = 'none';
+        }
+    });
+    
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+        console.log('Initializing app...');
+        console.log('API URL:', API_URL);
+        initCharts();
+        loadRecords();
+    });
+</script>
 </body>
 </html>
